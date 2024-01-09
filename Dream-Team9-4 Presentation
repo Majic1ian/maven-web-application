@@ -1,0 +1,92 @@
+pipeline{
+  agent any
+  //triggers   
+  //options{}
+  tools {
+    maven 'maven3.9.6'
+  }
+  stages{
+    stage('1clonecode'){
+      steps{
+        git "https://github.com/Majic1ian/maven-web-application"
+      }
+    }
+    stage('2mavenBuild'){
+    steps{
+          // ensure you have configured maven as a tool in Jenkins
+          sh "echo 'running JUnit-test-cases' "
+          sh "echo 'testing must passed to create artifacts ' "
+          sh "mvn clean package" 
+    }
+  }
+    stage('3CodeQuality'){
+    steps{
+          // edit pom.xml propertiesTAG with SonarQube server details
+          sh "mvn sonar:sonar"
+          sh "echo CodeQualityAnalysis completed" 
+    }
+  }
+    stage('4UploadArtifacts'){
+    steps{
+          //edit pom.xml distributionTag with nexus repositories details
+         // edit conf/settings.xml in Jenkins with nexus server details
+          sh "mvn deploy" 
+          sh "echo artifacts uploaded successfully"
+          sh "echo I am now a Build and Release Engineer"
+          sh "echo Build and release completed"
+    }
+  }
+    stage('5deploy2UAT'){
+    steps{
+          //use deploy to container plugin
+          //use pipeline syntax to generate syntax
+          sh "echo Deployment is ready for the client review" 
+          deploy adapters: [tomcat9(credentialsId: 'tomcatcredentials', path: '', url: 'http://3.15.209.239:8080/')], contextPath: null, war: 'target/*war'
+    }
+  }  
+  stage('6manualApproval'){
+    steps{
+      sh "echo Review the application and confirm its performance within 5 hours"
+      timeout(time:5, unit:'HOURS') {
+       input message: 'Application ready for deployment, Please review and approve'  
+      }
+    }
+  }
+    stage('7deploy2prod'){
+    steps{
+          //use deploy to container plugin
+          //use pipeline syntax to generate syntax
+          sh "echo application reviewed, approved and ready for the market" 
+deploy adapters: [tomcat9(credentialsId: 'tomcatcredentials', path: '', url: 'http://3.15.209.239:8080/')], contextPath: null, war: 'target/*war'
+    }
+  }  
+  }
+  post{
+    always{
+      emailext body: '''Hi,
+
+Build status.
+
+Landmark Technologies.
+Tel: +1 437 215 2483''', recipientProviders: [developers(), requestor(), buildUser()], subject: 'Build status', to: 'mylandmarktech@gmail.com'
+    }
+  success {
+     emailext body: '''Hi,
+
+Build successful.
+
+Landmark Technologies.
+Tel: +1 437 215 2483''', recipientProviders: [developers(), requestor(), buildUser()], subject: 'Build status', to: 'mylandmarktech@gmail.com'
+
+  }
+  failure{
+    emailext body: '''Hi,
+
+Build failed.
+
+Landmark Technologies.
+Tel: +1 437 215 2483''', recipientProviders: [developers(), requestor(), buildUser()], subject: 'Build status', to: 'mylandmarktech@gmail.com'
+
+  }
+  }
+}
